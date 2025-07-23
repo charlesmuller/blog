@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "lint": "echo 'Linting não configurado ainda, passando...' && exit 0"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
