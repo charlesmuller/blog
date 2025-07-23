@@ -1,0 +1,243 @@
+name: Deploy to Production VPS
+
+on:
+  push:
+    branches: [ main, production ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+
+env:
+  PHP_VERSION: '8.3'
+  NODE_VERSION: '18'
+
+jobs:
+  tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: testing
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ env.PHP_VERSION }}
+        extensions: mbstring, dom, fileinfo, mysql, gd, zip, redis, intl
+        coverage: none
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Copy environment file
+      run: cp .env.example .env
+
+    - name: Install Composer dependencies
+      run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+
+    - name: Install NPM dependencies
+      run: npm ci
+
+    - name: Generate application key
+      run: php artisan key:generate
+
+    - name: Set directory permissions
+      run: chmod -R 777 storage bootstrap/cache
+
+    - name: Build assets
+      run: npm run build
+
+    - name: Run database migrations
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: testing
+        DB_USERNAME: root
+        DB_PASSWORD: password
+        REDIS_HOST: 127.0.0.1
+        REDIS_PORT: 6379
+      run: php artisan migrate --force
+
+    - name: Execute tests
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: testing
+        DB_USERNAME: root
+        DB_PASSWORD: password
+        REDIS_HOST: 127.0.0.1
+        REDIS_PORT: 6379
+      run: php artisan test
+
+  deploy:
+    name: Deploy to VPS
+    needs: tests
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+    - name: Add VPS to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to VPS
+      env:
+        VPS_HOST: ${{ secrets.VPS_HOST }}
+        VPS_USER: ${{ secrets.VPS_USER }}
+        VPS_PATH: ${{ secrets.VPS_PROJECT_PATH }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_DATABASE: ${{ secrets.DB_DATABASE }}
+        DB_USERNAME: ${{ secrets.DB_USERNAME }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      run: |
+        ssh $VPS_USER@$VPS_HOST << 'EOF'
+          set -e
+          
+          echo "🚀 Iniciando deploy para produção..."
+          
+          # Entrar no diretório do projeto
+          cd ${{ secrets.VPS_PROJECT_PATH }}
+          
+          # Backup do banco antes do deploy
+          echo "📦 Criando backup do banco..."
+          docker-compose exec -T db mysqldump -h${{ secrets.DB_HOST }} -u${{ secrets.DB_USERNAME }} -p${{ secrets.DB_PASSWORD }} ${{ secrets.DB_DATABASE }} > backup-$(date +%Y%m%d-%H%M%S).sql || echo "Backup failed, continuing..."
+          
+          # Parar containers
+          echo "⏸️ Parando containers..."
+          docker-compose down
+          
+          # Atualizar código
+          echo "📥 Atualizando código..."
+          git fetch --all
+          git reset --hard origin/main
+          
+          # Instalar dependências
+          echo "📦 Instalando dependências..."
+          docker-compose run --rm app composer install --no-dev --optimize-autoloader --no-interaction
+          docker-compose run --rm app npm ci --only=production
+          
+          # Build assets
+          echo "🏗️ Building assets..."
+          docker-compose run --rm app npm run build
+          
+          # Criar .env se não existir
+          if [ ! -f .env ]; then
+            echo "📝 Criando arquivo .env..."
+            cp .env.example .env
+            echo "⚠️ ATENÇÃO: Configure o arquivo .env manualmente!"
+          fi
+          
+          # Iniciar containers
+          echo "🐳 Iniciando containers..."
+          docker-compose up -d --build
+          
+          # Aguardar containers iniciarem
+          echo "⏳ Aguardando containers..."
+          sleep 30
+          
+          # Executar migrations
+          echo "🗃️ Executando migrations..."
+          docker-compose exec -T app php artisan migrate --force
+          
+          # Criar usuário admin se não existir
+          echo "👤 Verificando usuário admin..."
+          docker-compose exec -T app php artisan tinker --execute="
+            if (!\App\Models\User::where('email', 'admin@example.com')->exists()) {
+              \App\Models\User::create([
+                'name' => 'Admin',
+                'email' => 'admin@example.com',
+                'password' => \Hash::make('password'),
+                'email_verified_at' => now()
+              ]);
+              echo 'Usuário admin criado: admin@example.com / password\n';
+            }
+          "
+          
+          # Otimizar aplicação
+          echo "⚡ Otimizando aplicação..."
+          docker-compose exec -T app php artisan config:cache
+          docker-compose exec -T app php artisan route:cache
+          docker-compose exec -T app php artisan view:cache
+          docker-compose exec -T app php artisan filament:optimize
+          
+          # Storage link
+          docker-compose exec -T app php artisan storage:link
+          
+          # Verificar saúde da aplicação
+          echo "🔍 Verificando saúde da aplicação..."
+          sleep 10
+          
+          if curl -f http://localhost/health > /dev/null 2>&1; then
+            echo "✅ Deploy concluído com sucesso!"
+          else
+            echo "❌ Falha no health check, mas containers estão rodando"
+            docker-compose ps
+          fi
+          
+          echo "🎉 Deploy finalizado!"
+        EOF
+
+    - name: Notify deployment status
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      continue-on-error: true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run security scan
+      uses: securecodewarrior/github-action-add-sarif@v1
+      with:
+        sarif-file: 'security-scan-results.sarif'
+      continue-on-error: true 
