@@ -45,11 +45,11 @@ sed -i 's/191\.252\.214\.90/SEU_IP_VPS/g' docs/deployment.md README.md
 **Status:** ✅ PROTEGIDO (já estava seguro)
 
 **Dados sensíveis encontrados no `.env`:**
-- `APP_KEY=base64:wRfEc+mNDBuyDxRI0PYBJGXIGUEATWqf6qTgMdIq/JI=`
-- `DB_HOST=mysql.planningvoter1.kinghost.net`
-- `DB_DATABASE=planningvoter101`
-- `DB_USERNAME=planningvoter101`  
-- `DB_PASSWORD=F3qniKC4sQgDCEjjChwG`
+- `APP_KEY=base64:[CHAVE_OCULTA_POR_SEGURANÇA]`
+- `DB_HOST=[HOST_OCULTO_POR_SEGURANÇA]`
+- `DB_DATABASE=[BANCO_OCULTO_POR_SEGURANÇA]`
+- `DB_USERNAME=[USUARIO_OCULTO_POR_SEGURANÇA]`  
+- `DB_PASSWORD=[SENHA_OCULTA_POR_SEGURANÇA]`
 
 **Proteção:**
 - ✅ Arquivo já estava no `.gitignore`
