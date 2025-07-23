@@ -54,8 +54,6 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: 'package-lock.json'
 
     - name: Copy environment file
       run: cp .env.example .env
@@ -64,7 +62,7 @@ jobs:
       run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
     - name: Install NPM dependencies
-      run: npm ci
+      run: npm install
 
     - name: Generate application key
       run: php artisan key:generate
@@ -153,7 +151,7 @@ jobs:
           # Instalar dependências
           echo "📦 Instalando dependências..."
           docker-compose run --rm app composer install --no-dev --optimize-autoloader --no-interaction
-          docker-compose run --rm app npm ci --only=production
+          docker-compose run --rm app npm install --only=production
           
           # Build assets
           echo "🏗️ Building assets..."
