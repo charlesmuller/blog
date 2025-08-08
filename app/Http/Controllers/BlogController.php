@@ -11,9 +11,30 @@ use Illuminate\View\View;
 class BlogController extends Controller
 {
     /**
-     * Lista de posts do blog
+     * Timeline de posts do blog (página inicial)
      */
-    public function index(Request $request): View
+    public function timeline(Request $request): View
+    {
+        $posts = Post::published()
+            ->with(['category', 'user', 'tags'])
+            ->latest('published_at')
+            ->paginate(5); // Poucos posts por página já que mostra conteúdo completo
+
+        $categories = Category::withCount(['posts' => function ($query) {
+            $query->published();
+        }])->orderBy('sort_order')->get();
+
+        $tags = Tag::withCount(['posts' => function ($query) {
+            $query->published();
+        }])->orderBy('name')->get();
+
+        return view('blog.timeline', compact('posts', 'categories', 'tags'));
+    }
+
+    /**
+     * Lista de posts em grid (cards)
+     */
+    public function grid(Request $request): View
     {
         $posts = Post::published()
             ->with(['category', 'user', 'tags'])

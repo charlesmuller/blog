@@ -15,7 +15,8 @@ Route::get('/', function () {
 
 // Rotas do Blog Público
 Route::prefix('blog')->name('blog.')->group(function () {
-    Route::get('/', [BlogController::class, 'index'])->name('index');
+    Route::get('/', [BlogController::class, 'timeline'])->name('index'); // Timeline view
+    Route::get('/grid', [BlogController::class, 'grid'])->name('grid'); // Card grid view
     Route::get('/post/{slug}', [BlogController::class, 'show'])->name('post');
     Route::get('/category/{slug}', [BlogController::class, 'category'])->name('category');
     Route::get('/tag/{slug}', [BlogController::class, 'tag'])->name('tag');

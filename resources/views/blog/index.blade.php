@@ -1,12 +1,28 @@
 @extends('layouts.blog')
 
-@section('title', 'Início')
+@section('title', 'Charles Müller - Blog') 
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     <div class="text-center mb-12">
         <h1 class="text-4xl font-bold text-gray-900 mb-4">Blog</h1>
-        <p class="text-xl text-gray-600">Histórias, reflexões e experiências da vida</p>
+        <p class="text-xl text-gray-600 mb-8">Histórias, reflexões e experiências da vida</p>
+        
+        <!-- View Toggle -->
+        <div class="flex justify-center space-x-4 mb-8">
+            <a href="{{ route('blog.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg font-medium transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 16a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"/>
+                </svg>
+                Timeline
+            </a>
+            <span class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium">
+                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
+                Cards
+            </span>
+        </div>
     </div>
 
     @if($posts && $posts->count() > 0)
@@ -14,52 +30,45 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             @foreach($posts as $post)
                 <article class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                    @if($post->featured_image)
-                        <img src="{{ asset('storage/' . $post->featured_image) }}" 
-                             alt="{{ $post->title }}" 
-                             class="w-full h-48 object-cover">
-                    @endif
-                    
-                    <div class="p-6">
-                        <div class="flex items-center text-sm text-gray-500 mb-2">
-                            <span>{{ $post->published_at->format('d/m/Y') }}</span>
-                            @if($post->category)
-                                <span class="mx-2">•</span>
-                                <span class="text-blue-600">{{ $post->category->name }}</span>
-                            @endif
-                        </div>
-                        
-                        <h2 class="text-xl font-semibold text-gray-900 mb-3">
-                            <a href="{{ route('blog.post', $post->slug) }}" class="hover:text-blue-600 transition-colors">
+                    <a href="{{ route('blog.post', $post->slug) }}" class="block h-full cursor-pointer">
+                        <div class="p-6 h-full flex flex-col">
+                            <div class="flex items-center text-sm text-gray-500 mb-2">
+                                <span>{{ $post->published_at->format('d/m/Y') }}</span>
+                                @if($post->category)
+                                    <span class="mx-2">•</span>
+                                    <span class="text-blue-600">{{ $post->category->name }}</span>
+                                @endif
+                            </div>
+
+                            <h2 class="text-xl font-semibold text-gray-900 mb-3 hover:text-blue-600 transition-colors">
                                 {{ $post->title }}
-                            </a>
-                        </h2>
-                        
-                        @if($post->excerpt)
-                            <p class="text-gray-600 mb-4">{{ Str::limit($post->excerpt, 120) }}</p>
-                        @endif
-                        
-                        <div class="flex justify-between items-center">
-                            <a href="{{ route('blog.post', $post->slug) }}" 
-                               class="text-blue-600 hover:text-blue-800 font-medium">
-                                Ler mais →
-                            </a>
+                            </h2>
                             
-                            <div class="flex items-center text-gray-500 text-sm">
-                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
-                                </svg>
-                                {{ $post->views_count ?? 0 }}
+                            @if($post->excerpt)
+                                <p class="text-gray-600 mb-4 flex-grow">{{ Str::limit($post->excerpt, 120) }}</p>
+                            @endif
+                            
+                            <div class="flex justify-between items-center mt-auto">
+                                <span class="text-blue-600 hover:text-blue-800 font-medium">
+                                    Ler mais →
+                                </span>
+                                
+                                <div class="flex items-center text-gray-500 text-sm">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                                        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $post->views_count ?? 0 }}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 </article>
             @endforeach
         </div>
 
         <!-- Pagination -->
-        <div class="mt-12">
+        <div class="mt-12 flex justify-center">
             {{ $posts->links() }}
         </div>
     @else
