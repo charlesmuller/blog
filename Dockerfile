@@ -77,8 +77,10 @@ COPY --chown=sail:sail . .
 # Gerar autoload otimizado
 RUN composer dump-autoload --optimize --classmap-authoritative
 
-# Build assets
-RUN npm run build && npm cache clean --force && npm prune --production
+# Pular build assets por enquanto (CSS via volume)
+# RUN npm run build
+RUN npm cache clean --force
+RUN npm prune --production
 
 # Criar diretórios necessários com permissões corretas
 RUN mkdir -p storage/app/public \
